@@ -15,7 +15,8 @@ SOURCE_PATH	:= $(shell pwd)
 LIBRE_PATH	:= $(SOURCE_PATH)/re
 LIBREM_PATH	:= $(SOURCE_PATH)/rem
 BARESIP_PATH	:= $(SOURCE_PATH)/baresip
-
+OPENSSL_PATH := $(SOURCE_PATH)/openssl
+OPUS_PATH := $(SOURCE_PATH)/opus
 
 #
 # tools and SDK
@@ -40,6 +41,7 @@ CC_ARM_FLAGS := -fembed-bitcode
 CC_SIM_FLAGS := -fembed-bitcode
 
 CONTRIB_DIR	:= $(PWD)/contrib
+CONTRIB_AARCH64_SIM	:= $(CONTRIB_DIR)/aarch64_sim
 CONTRIB_AARCH64	:= $(CONTRIB_DIR)/aarch64
 CONTRIB_ARMV7	:= $(CONTRIB_DIR)/armv7
 CONTRIB_ARMV7S	:= $(CONTRIB_DIR)/armv7s
@@ -48,6 +50,7 @@ CONTRIB_FAT	:= $(CONTRIB_DIR)/fat
 
 BUILD_DIR	:= $(PWD)/build
 BUILD_AARCH64	:= $(BUILD_DIR)/aarch64
+BUILD_AARCH64_SIM	:= $(BUILD_DIR)/aarch64_sim
 BUILD_ARMV7	:= $(BUILD_DIR)/armv7
 BUILD_ARMV7S	:= $(BUILD_DIR)/armv7s
 BUILD_X86_64	:= $(BUILD_DIR)/x86_64
@@ -79,11 +82,15 @@ EXTRA_X86_64      := \
 		-Wno-cast-align -Wno-shorten-64-to-32 \
 		-Wno-aggregate-return \
 		-arch x86_64 \
+		-I$(OPENSSL_PATH)/include \
+		-I$(OPUS_PATH)/include \
 		-isysroot $(SDK_SIM) \
 		-I$(CONTRIB_X86_64)/include \
 		-I$(CONTRIB_X86_64)/include/rem' \
 	OBJCFLAGS='-fobjc-abi-version=2 -fobjc-legacy-dispatch' \
 	EXTRA_LFLAGS='-mios-simulator-version-min=$(DEPLOYMENT_TARGET_VERSION) -arch x86_64 -L$(CONTRIB_FAT)/lib \
+		-L$(OPENSSL_PATH)/lib \
+		-L$(OPUS_PATH)/lib \
 		-isysroot $(SDK_SIM)'
 
 EXTRA_AARCH64       := \
@@ -92,12 +99,33 @@ EXTRA_AARCH64       := \
 		-I$(CONTRIB_AARCH64)/include/rem \
 		-Wno-cast-align -Wno-shorten-64-to-32 \
 		-Wno-aggregate-return \
+		-I$(OPENSSL_PATH)/include \
+		-I$(OPUS_PATH)/include \
 		-miphoneos-version-min=$(DEPLOYMENT_TARGET_VERSION) \
 		-isysroot $(SDK_ARM) -DHAVE_AARCH64' \
 	EXTRA_LFLAGS='-arch arm64 -mcpu=generic -marm \
+		-L$(OPENSSL_PATH)/lib \
+		-L$(OPUS_PATH)/lib \
 		-L$(CONTRIB_FAT)/lib -isysroot $(SDK_ARM)' \
 	OS=darwin ARCH=arm64 CROSS_COMPILE=$(ARM_MACHINE) \
 	HAVE_ARM64=1
+
+EXTRA_AARCH64_SIM	:= \
+	EXTRA_CFLAGS='-D__DARWIN_ONLY_UNIX_CONFORMANCE \
+		-mios-simulator-version-min=$(DEPLOYMENT_TARGET_VERSION) \
+		-Wno-cast-align -Wno-shorten-64-to-32 \
+		-Wno-aggregate-return \
+		-arch arm64 \
+		-I$(OPENSSL_PATH)/include \
+		-I$(OPUS_PATH)/include \
+		-isysroot $(SDK_SIM) \
+		-I$(CONTRIB_AARCH64_SIM)/include \
+		-I$(CONTRIB_AARCH64_SIM)/include/rem' \
+	OBJCFLAGS='-fobjc-abi-version=2 -fobjc-legacy-dispatch' \
+	EXTRA_LFLAGS='-mios-simulator-version-min=$(DEPLOYMENT_TARGET_VERSION) -arch arm64 -L$(CONTRIB_FAT)/lib \
+		-L$(OPENSSL_PATH)/lib \
+		-L$(OPUS_PATH)/lib \
+		-isysroot $(SDK_SIM)'
 
 EXTRA_ARMV7       := \
 	EXTRA_CFLAGS='-arch armv7 \
@@ -105,9 +133,13 @@ EXTRA_ARMV7       := \
 		-I$(CONTRIB_ARMV7)/include/rem \
 		-Wno-cast-align -Wno-shorten-64-to-32 \
 		-Wno-aggregate-return \
+		-I$(OPENSSL_PATH)/include \
+		-I$(OPUS_PATH)/include \
 		-miphoneos-version-min=$(DEPLOYMENT_TARGET_VERSION) \
 		-isysroot $(SDK_ARM) -DHAVE_NEON' \
 	EXTRA_LFLAGS='-arch armv7 -mcpu=cortex-a8 -mfpu=neon -marm \
+		-L$(OPENSSL_PATH)/lib \
+		-L$(OPUS_PATH)/lib \
 		-L$(CONTRIB_FAT)/lib -isysroot $(SDK_ARM)' \
 	OS=darwin ARCH=armv7 CROSS_COMPILE=$(ARM_MACHINE) \
 	HAVE_NEON=1
@@ -118,9 +150,13 @@ EXTRA_ARMV7S       := \
 		-I$(CONTRIB_ARMV7S)/include/rem \
 		-Wno-cast-align -Wno-shorten-64-to-32 \
 		-Wno-aggregate-return \
+		-I$(OPENSSL_PATH)/include \
+		-I$(OPUS_PATH)/include \
 		-miphoneos-version-min=$(DEPLOYMENT_TARGET_VERSION) \
 		-isysroot $(SDK_ARM) -DHAVE_NEON' \
 	EXTRA_LFLAGS='-arch armv7s -mcpu=cortex-a8 -mfpu=neon -marm \
+		-L$(OPENSSL_PATH)/lib \
+		-L$(OPUS_PATH)/lib \
 		-L$(CONTRIB_FAT)/lib -isysroot $(SDK_ARM)' \
 	OS=darwin ARCH=armv7s CROSS_COMPILE=$(ARM_MACHINE) \
 	HAVE_NEON=1
@@ -146,7 +182,7 @@ $(CONTRIB_FAT) $(CONTRIB_FAT)/lib:
 #
 
 LIBRE_BUILD_FLAGS := \
-	USE_OPENSSL= OPENSSL_OPT= USE_ZLIB= OPT_SPEED=1 USE_APPLE_COMMONCRYPTO=1
+	USE_OPENSSL=1 OPENSSL_OPT= USE_OPENSSL_DTLS=1 USE_OPENSSL_SRTP=1 USE_ZLIB= OPT_SPEED=1 USE_APPLE_COMMONCRYPTO=1
 
 libre: $(CONTRIB_FAT)/lib
 	@rm -f $(LIBRE_PATH)/libre.*
@@ -194,7 +230,7 @@ libre: $(CONTRIB_FAT)/lib
 #
 
 LIBREM_BUILD_FLAGS := \
-	OPENSSL_OPT= OPT_SPEED=1 
+	OPENSSL_OPT= OPT_SPEED=1
 
 librem: libre
 	@rm -f $(LIBREM_PATH)/librem.*
@@ -229,6 +265,14 @@ librem: libre
 		PREFIX= DESTDIR=$(CONTRIB_X86_64) \
 		all install
 
+	@rm -f $(LIBREM_PATH)/librem.*
+	@make -sC $(LIBREM_PATH) CC='$(CC_SIM) $(CC_SIM_FLAGS)' \
+		BUILD=$(BUILD_AARCH64_SIM)/librem \
+		SYSROOT=$(SIMROOT) SYSROOT_ALT=$(SIMROOT_ALT) \
+		$(LIBREM_BUILD_FLAGS) $(EXTRA_X86_64) \
+		PREFIX= DESTDIR=$(CONTRIB_AARCH64_SIM) \
+		all install
+
 	@lipo \
 		-arch x86_64 $(CONTRIB_X86_64)/lib/librem.a \
 		-arch arm64 $(CONTRIB_AARCH64)/lib/librem.a \
@@ -243,25 +287,29 @@ librem: libre
 
 BARESIP_BUILD_FLAGS := \
 	STATIC=1 OPT_SPEED=1 \
-	USE_OPENSSL= USE_ZLIB= \
+	USE_OPENSSL=1 USE_OPENSSL_DTLS=1 USE_OPENSSL_SRTP=1 USE_ZLIB= \
 	MOD_AUTODETECT= \
 	USE_FFMPEG=
 
+BARESIP_BUILD_FLAGS_AARCH64_SIM := \
+	$(BARESIP_BUILD_FLAGS) \
+	EXTRA_MODULES='g711 audiounit dtls_srtp srtp stun turn ice opus'
+
 BARESIP_BUILD_FLAGS_X86_64 := \
 	$(BARESIP_BUILD_FLAGS) \
-	EXTRA_MODULES='g711 audiounit avcapture'
+	EXTRA_MODULES='g711 audiounit dtls_srtp srtp stun turn ice opus'
 
 BARESIP_BUILD_FLAGS_AARCH64 := \
 	$(BARESIP_BUILD_FLAGS) \
-	EXTRA_MODULES='g711 audiounit avcapture'
+	EXTRA_MODULES='g711 audiounit dtls_srtp srtp stun turn ice opus'
 
 BARESIP_BUILD_FLAGS_ARMV7 := \
 	$(BARESIP_BUILD_FLAGS) \
-	EXTRA_MODULES='g711 audiounit avcapture'
+	EXTRA_MODULES='g711 audiounit dtls_srtp srtp stun turn ice opus'
 
 BARESIP_BUILD_FLAGS_ARMV7S := \
 	$(BARESIP_BUILD_FLAGS) \
-	EXTRA_MODULES='g711 audiounit avcapture'
+	EXTRA_MODULES='g711 audiounit dtls_srtp srtp stun turn ice opus'
 
 
 baresip: librem libre
@@ -293,7 +341,7 @@ baresip: librem libre
 	@make -sC $(BARESIP_PATH) CC='$(CC_SIM) $(CC_SIM_FLAGS)' \
 		BUILD=$(BUILD_X86_64)/baresip \
 		SYSROOT=$(SIMROOT) SYSROOT_ALT=$(SIMROOT_ALT) \
-		$(BARESIP_BUILD_FLAGS_X86_64) $(EXTRA_X86_64) \
+		$(BARESIP_BUILD_FLAGS_AARCH64_SIM) $(EXTRA_AARCH64_SIM) \
 		PREFIX= DESTDIR=$(CONTRIB_X86_64) \
 		install-static
 
